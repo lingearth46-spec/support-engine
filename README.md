@@ -2,7 +2,7 @@
 
 A WhatsApp customer-support bot for online shops, published as a **reference kit**. It is the working code of one shop's bot, with the shop's customer data removed, plus a guide and a Claude Code skill that walk your team through adapting it to your own policies, order system and couriers.
 
-It is not a package you install. You copy the reference code into your own project and change what is specific to the original shop. This repository tells you what to change, and gives you the tests to prove you did not break the safety behaviour while changing it.
+It is not a package you install. You fork or copy it into your own repository and change what is specific to the original shop. This repository is a runnable project: `npm install && npm test` passes on a fresh clone. It tells you what to change, and gives you the tests to prove you did not break the safety behaviour while changing it.
 
 > **Licence:** all rights reserved. The code is public so you can read and evaluate it. Using it in a business requires a written licence from the owner. See [LICENSE](LICENSE).
 > **Support:** none is promised. This is provided as is.
@@ -20,7 +20,7 @@ It answers order, delivery, cancellation, return and product questions on WhatsA
 - **One deployment:** an Indian direct-to-consumer jewellery shop (AJUKI), English and Hinglish customers, WhatsApp Cloud API, cash-on-delivery and prepaid orders, two couriers.
 - **In production** since October 2026. The late-delivery module has run at full traffic since 18 October 2026.
 - **Day to day:** in its first weeks it needed a daily read of real chats to find and fix gaps. Plan for the same.
-- **Tests:** 79 test files are included in `reference/`. They cover the rules, checks and state machines and run without a database or network.
+- **Tests:** 80 test files are included under `src/`. They cover the rules, checks and state machines and run without a database or network.
 - **Not yet proven:** a second company, Shopify as the order source, a different courier set, or a language other than English and Hinglish.
 
 ## Models it has been tested with
@@ -57,7 +57,7 @@ Using Claude Code to adapt this kit is a separate matter from the models the bot
 **Fixed answers where wording matters**
 - Pending or rejected returns, cancellation after dispatch, "no exchange", discounts and similar topics use exact approved lines. The model does not improvise them.
 
-**Late-delivery module** (`reference/lib/delivery*`, `courier*`, `ndr*` and related)
+**Late-delivery module** (`src/modules/late-delivery/`, optional)
 - Reads a parcel's courier scans and decides the right reply for its state: being packed, in transit, failed attempt, customer unavailable, returning, stalled.
 - Asks the right question after a failed attempt ("which day?", "did the rider call?") and remembers the answer.
 - Where a courier allows it: reschedules delivery, passes a new phone or address to the courier, raises a courier ticket, and messages the customer when the parcel moves.
@@ -88,16 +88,52 @@ Deliberate, and some enforced in code:
 - **Cost and speed:** each reply can involve more than one model call (write, then check). Measure on your own traffic in shadow mode.
 - **Comments quote real situations.** Customer details have been removed or replaced, but comments describe real incidents and phrasing. Treat them as examples, not as your policy.
 
+## Layout
+
+```
+src/
+  engine/              the pipeline, fixed rules, reply checks, order and case logic   (README inside)
+  policy/              the files a company edits first: business truths, hours, return rules   (README inside)
+  adapters/            what the bot talks to: orders (Supabase, Shopify), WhatsApp, notifier, models, couriers   (README inside)
+  modules/
+    late-delivery/     OPTIONAL: failed-delivery handling and courier actions   (README inside)
+    commerce/          the reference shop's own commerce features: cut or replace   (README inside)
+  app/api/webhooks/whatsapp/route.ts    the WhatsApp webhook
+db/                    migrations for the core tables
+docs/
+  WHAT-TO-REPLACE.md   what ties the code to the original shop, in replacement order
+  reference-notes/     design notes from the reference deployment
+.claude/skills/onboard/   the interview skill for Claude Code
+CLAUDE.md              rules for Claude Code when working on your copy
+scripts/run-tests.mjs  `npm test`
+```
+
+Each module folder has its own README. Imports use aliases: `@engine/`, `@policy/`, `@adapters/`, `@late/` (late-delivery), `@commerce/`.
+
+## What is separated, and what is not (honest status)
+
+| Part | Status |
+|---|---|
+| Folder layout (engine, policy, adapters, modules) | Done. Tests live beside the code they test. |
+| **Orders** | A real interface (`OrderSource`) wired into the handler, with the reference shop's source and a read-only **Shopify** source (unit-tested with fixtures, **not tested against a live store**). |
+| **Late-delivery module** | Its own folder with a single doorway (`src/engine/lateModule.ts`). Off unless configured. It cannot yet be deleted without stubs. |
+| **Policy files** | Grouped in `src/policy/`. The 55 fixed lines, the brand strings and the escalation keywords still live in the engine. |
+| Messaging, notifier, model, courier adapters | Moved to `src/adapters/` but still imported directly. Not yet behind interfaces. |
+| Commerce extras | Isolated in `src/modules/commerce/`, still imported by the engine and the route. |
+
+Finishing the rest is the adaptation work this kit is designed to guide, using the tests as the safety net.
+
 ## How to use this kit
 
-1. **Read** [docs/WHAT-TO-REPLACE.md](docs/WHAT-TO-REPLACE.md). It lists what ties the reference code to the original shop, and in what order to replace it.
-2. **Create your own repository** and copy `reference/` into it. Do not edit this repository.
-3. **Open it in Claude Code and run the `onboard` skill** (`.claude/skills/onboard/`). It interviews you about your business, hours, identity rule, cancel, return and refund policy, shipping and couriers, what the bot may never promise, who receives escalations, tone and hosting. It writes your policy files, an environment checklist, and a set of test conversations. Anything it cannot get from you or your documents is listed as an open item, never guessed.
-4. **Adapt the code** following the replacement list, one step at a time. After each step the tests that passed before must still pass.
-5. **Replay** your real historical chats through the rating tools and read the findings before anything else.
-6. **Run in shadow mode.** The bot drafts replies and records them; nothing is sent. Compare with what your team actually sent and fix your policy files.
-7. **Go live for a small share of customers** with the kill switch ready, then widen.
-8. **Add the late-delivery behaviour** only once you have a courier client for your couriers.
+1. **Fork or clone this repository** into your own account. Do not work in this one.
+2. `npm install`, then `npm test`. Everything should pass before you change anything. `npm run typecheck` should report no errors.
+3. **Read** [docs/WHAT-TO-REPLACE.md](docs/WHAT-TO-REPLACE.md).
+4. **Open it in Claude Code and run the `onboard` skill** (`.claude/skills/onboard/`). It interviews you about your business, hours, identity rule, cancel, return and refund policy, shipping and couriers, what the bot may never promise, who receives escalations, tone and hosting. It writes your policy files, an environment checklist and a set of test conversations. Anything it cannot get from you or your documents is listed as an open item, never guessed.
+5. **Adapt the code** following the replacement list, one step at a time. After each step the tests that passed before must still pass.
+6. **Replay** your real historical chats through the rating tools and read the findings before anything else.
+7. **Run in shadow mode.** The bot drafts replies and records them; nothing is sent. Compare with what your team actually sent and fix your policy files.
+8. **Go live for a small share of customers** with the kill switch ready, then widen.
+9. **Add the late-delivery behaviour** only once you have a courier client for your couriers.
 
 ## Safety switches
 
@@ -106,21 +142,3 @@ Every capability has an off switch that needs no deploy: the bot as a whole, the
 ## Your data
 
 Messages, cases and orders stay in your own database. Model providers see the customer's message, the order facts needed for the reply, and your policy files, under your own API keys.
-
-## What is in this repository
-
-```
-README.md                     this file
-LICENSE                       all rights reserved
-CLAUDE.md                     rules for Claude Code when working on your copy
-docs/WHAT-TO-REPLACE.md       what ties the code to the original shop, in replacement order
-.claude/skills/onboard/       the interview skill
-reference/                    the bot's code and tests, with the original shop as the example
-  lib/                        rules, checks, state machines, order and case logic
-  app/api/                    the WhatsApp webhook route
-  db/                         the migrations for the core tables
-  workflows/                  notes from the reference deployment
-  tsconfig.json               path settings only; this is not a complete project
-```
-
-`reference/` is **not runnable as it stands**: it has no `package.json`, and several modules call services (database, model provider, couriers) that you must provide. It is a reading and copying source, with tests you can run once you have a project around it.

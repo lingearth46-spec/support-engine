@@ -1,8 +1,8 @@
 # What to replace, and in what order
 
-`reference/` is the code of one shop's bot. This guide lists what ties it to that shop and how to replace each part. Counts are for the reference folder as published: 116 code files and 79 test files.
+`src/` is the code of one shop's bot. This guide lists what ties it to that shop and how to replace each part. Counts were taken before the code was reorganised into folders, over 116 code files and 79 test files.
 
-How the survey was done: every file reachable from the WhatsApp webhook route and `lib/waSupport.ts` (test files excluded). Groupings are by filename and approximate. Patterns were counted by search; not every file was read in full.
+How the survey was done: every file reachable from the WhatsApp webhook route and `src/engine/waSupport.ts` (then `lib/waSupport.ts`) (test files excluded). Groupings are by filename and approximate. Patterns were counted by search; not every file was read in full.
 
 **Rule for every step:** the tests that passed before must still pass afterwards. They are your safety net, and the reason this kit includes them.
 
@@ -25,7 +25,7 @@ Across the files, the shop's domain appears about 90 times, its name about 100 t
 - 23 files read an `orders` table. The shared selection is 26 columns: id, status, address, items, totals and payment fields, tracking number, courier, tracking URL, estimated delivery, delivered date, attempt count, failure reasons, return request and more.
 - The status vocabulary has 15 values, several specific to the original shop (`call_1`, `call_2`, `wa_cancelled`, a hold used by its COD journey, `manifested`, `packed`).
 
-**Replace with:** one function that returns your orders in the shape `lib/orderLines.ts` already reads (`OrderRow`). A draft mapping from Shopify, to verify against your own store:
+**Already done for you, partly:** orders are read through an `OrderSource` interface (`src/adapters/orders/types.ts`), passed to the handler as `handleSupportMessage(db, message, { orders })`. Two sources are included: the reference shop's own table (`supabase.ts`) and a read-only Shopify source (`shopify.ts`, built from Shopify's documentation and tested only against fixtures). Write or adapt a source that returns `OrderRow` (`src/engine/orderLines.ts`). The Shopify mapping, to verify against your own store:
 
 | Reference field | Shopify source |
 |---|---|
@@ -40,13 +40,13 @@ Across the files, the shop's domain appears about 90 times, its name about 100 t
 Start read-only. Cancel and address-change actions need write access and can come later.
 
 ## 4. Storage
-The bot needs about nine tables: conversations, messages, cases, the support config (persona and flags), knowledge chunks, customers and their identifiers, case events, policy decisions and opt-outs. `reference/db/` has the migrations for the core ones. The original shop has about 25 other tables for commerce, couriers and email; they are not included and you do not need them.
+The bot needs about nine tables: conversations, messages, cases, the support config (persona and flags), knowledge chunks, customers and their identifiers, case events, policy decisions and opt-outs. `db/` has the migrations for the core ones. The original shop has about 25 other tables for commerce, couriers and email; they are not included and you do not need them.
 
 ## 5. Commerce code the bot happens to import
 Five modules sit on the bot's import path and belong to the original shop's commerce: the COD confirmation journey (`rtoJourney`, imported directly by the webhook route), `orderOffers`, `cartOffers`, `prepaidOffer` and `wallet`. Cut them off behind small stubs or delete the features that use them. Check with the tests.
 
 ## 6. Messaging
-`app/api/webhooks/whatsapp/route.ts` is about 1,000 lines and reads Meta's payload shape directly. It also holds the courier button handlers, the address-edit prompt and the confirmation flows. If your WhatsApp integration is custom, write a thin layer that turns your inbound events into the shape the route expects (text, button tap, image, reaction) and sends the replies the bot returns. Keep the duplicate-message check by message id.
+`src/app/api/webhooks/whatsapp/route.ts` is about 1,000 lines and reads Meta's payload shape directly. It also holds the courier button handlers, the address-edit prompt and the confirmation flows. If your WhatsApp integration is custom, write a thin layer that turns your inbound events into the shape the route expects (text, button tap, image, reaction) and sends the replies the bot returns. Keep the duplicate-message check by message id.
 
 ## 7. Couriers (the late-delivery code)
 About 50 files are courier or delivery related, and most mention Delhivery, Shadowfax, Shiprocket or DTDC. The original shop also automates a courier's web portal; that code is not included.

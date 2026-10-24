@@ -5,7 +5,7 @@ description: Interview the company about its support policies and systems, write
 
 # Onboard a company onto the support bot
 
-You are helping a company adapt the reference support bot in `reference/` to their own business. Read `README.md` and `docs/WHAT-TO-REPLACE.md` first.
+You are helping a company adapt the reference support bot in `src/` to their own business. Read `README.md` and `docs/WHAT-TO-REPLACE.md` first.
 
 ## Ground rules
 
@@ -13,7 +13,7 @@ You are helping a company adapt the reference support bot in `reference/` to the
 - **One topic at a time.** Ask a small group of related questions, wait for the answers, restate what you will write, get a yes, then write it.
 - **Quote, then confirm.** When they have a document, read it and show them the exact lines you are taking. Do not paraphrase a policy.
 - **Never promise on the bot's behalf** a refund, replacement, exchange, discount, callback, reply time or delivery time unless their policy explicitly allows it and a person approves the wording. The reference bot is built never to.
-- **Do not edit `reference/`** in the kit repository. Work in the company's own copy.
+- **Work in the company's own copy** (a fork or clone), never in the original kit repository.
 - **Everything new ships off** (shadow mode, kill switch on) until the replay is clean and a person has approved going live.
 
 ## Phase 1: interview
